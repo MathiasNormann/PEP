@@ -4,6 +4,7 @@ import (
     "encoding/csv"
     "fmt"
     "log"
+    "net/http"
     "os"
 
     "golang.org/x/text/encoding/charmap"
@@ -14,6 +15,8 @@ type PEP struct {
     Name string
     Birthday string
 }
+
+var PEPs []PEP
 
 // Read a csv file to a slice of slices
 func readCsvFile(filePath string) [][]string {
@@ -54,17 +57,25 @@ func contains(PEPs []PEP, lookupPEP PEP) bool {
     return false
 }
 
+// Handler for queries with name and birthday
+func PEPHandler(w http.ResponseWriter, r *http.Request) {
+    v := r.URL.Query()
+
+    firstname := v.Get("firstname")
+    lastname := v.Get("lastname")
+    birthday := v.Get("birthday")
+
+    lookupPEP := PEP{firstname + " " + lastname, birthday}
+    fmt.Fprintf(w, "%t\n", contains(PEPs, lookupPEP))
+}
+
 func main() {
     // Read file
     records := readCsvFile("../PEP_listen.csv")
     // Collect PEPs
-    PEPs := collect(records)
-    // Get PEP from 
-    if len(os.Args) < 3 {
-        fmt.Println(false)
-        return
-    }
-    lookupPEP := PEP{os.Args[1], os.Args[2]}
-    // Look up the PEP
-    fmt.Println(contains(PEPs, lookupPEP))
+    PEPs = collect(records)
+    // Handler for queries
+    http.HandleFunc("/", PEPHandler)
+    // Listen for http requests
+    log.Fatal(http.ListenAndServe(":3000", nil))
 }
